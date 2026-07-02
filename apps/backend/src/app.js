@@ -1,71 +1,40 @@
-import { createClient } from "@supabase/supabase-js";
-import dotenv from "dotenv";
+import express from "express";
+import supabase from "./config/supabase.js";
+import authRoutes from "./routes/auth.routes.js";
+import userRoutes from "./routes/user.routes.js";
 
-dotenv.config();
+const app = express();
+app.use(express.json());
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY
-);
+app.use("/api/auth", authRoutes);
+app.use("/api/user", userRoutes);
 
-export const login = async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    if (error) {
-      return res.status(401).json({
-        success: false,
-        message: error.message,
-      });
-    }
-    res.json({
-      success: true,
-      message: "Login berhasil",
-      session: data.session,
-      user: data.user,
-    });
-  } catch (err) {
-    res.status(500).json({
+// Root endpoint
+app.get("/", (req, res) => {
+  res.json({
+    message: "HomeLynk API is running 🚀",
+  });
+});
+
+// Test koneksi Supabase
+app.get("/test", async (req, res) => {
+  const { data, error } = await supabase
+    .from("users")
+    .select("*");
+
+  if (error) {
+    return res.status(500).json({
       success: false,
-      message: err.message,
+      message: "Supabase connected, but query failed.",
+      error: error.message,
     });
   }
-};
 
-export const register = async (req, res) => {
-  try {
-    const { full_name, email, password } = req.body;
+  res.json({
+    success: true,
+    message: "Supabase connected successfully!",
+    data,
+  });
+});
 
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
-
-    if (error) {
-      return res.status(400).json({
-        success: false,
-        message: error.message,
-      });
-    }
-
-    const user = data.user;
-
-    await supabase.from("users").insert({
-      id: user.id,
-      full_name,
-    });
-
-    res.status(201).json({
-      success: true,
-      message: "Register berhasil",
-    });
-  } catch (err) {
-    res.status(500).json({
-      success: false,
-      message: err.message,
-    });
-  }
-};
+export default app;
