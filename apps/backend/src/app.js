@@ -1,13 +1,16 @@
 import express from "express";
-import supabase from "./config/supabase.js";
+import { supabase } from "./config/supabase.js";
 import authRoutes from "./routes/auth.routes.js";
 import userRoutes from "./routes/user.routes.js";
+import homeRoutes from "./routes/home.routes.js";
 
 const app = express();
 app.use(express.json());
 
+// buat route ke semua route yang ada
 app.use("/api/auth", authRoutes);
 app.use("/api/user", userRoutes);
+app.use("/api/homes", homeRoutes);
 
 // Root endpoint
 app.get("/", (req, res) => {

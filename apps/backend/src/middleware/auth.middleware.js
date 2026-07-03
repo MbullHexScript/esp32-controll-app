@@ -1,4 +1,4 @@
-import supabase from "../config/supabase.js";
+import { createSupabaseClient } from "../config/supabaseClient.js";
 
 export const authenticate = async (req, res, next) => {
   try {
@@ -13,7 +13,9 @@ export const authenticate = async (req, res, next) => {
 
     const token = authHeader.replace("Bearer ", "");
 
-    const { data, error } = await supabase.auth.getUser(token);
+    const supabase = createSupabaseClient(token);
+
+    const { data, error } = await supabase.auth.getUser();
 
     if (error || !data.user) {
       return res.status(401).json({
@@ -23,6 +25,9 @@ export const authenticate = async (req, res, next) => {
     }
 
     req.user = data.user;
+
+    // Simpan client yang sudah membawa JWT user
+    req.supabase = supabase;
 
     next();
   } catch (err) {

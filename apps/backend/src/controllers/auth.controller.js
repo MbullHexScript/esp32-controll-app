@@ -1,45 +1,11 @@
-// TEST GIT
-import { createClient } from "@supabase/supabase-js";
-import dotenv from "dotenv";
+import { supabase, supabaseAdmin } from "../config/supabase.js";
 
-dotenv.config();
-
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY
-);
-
-export const login = async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    if (error) {
-      return res.status(401).json({
-        success: false,
-        message: error.message,
-      });
-    }
-    res.json({
-      success: true,
-      message: "Login Berhasil",
-      session: data.session,
-      user: data.user,
-    });
-  } catch (err) {
-    res.status(500).json({
-      success: false,
-      message: err.message,
-    });
-  }
-};
-
+// REGISTER
 export const register = async (req, res) => {
   try {
     const { full_name, email, password } = req.body;
 
+    // Register ke Supabase Auth
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -54,17 +20,81 @@ export const register = async (req, res) => {
 
     const user = data.user;
 
-    await supabase.from("users").insert({
-      id: user.id,
-      full_name,
-    });
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: "User gagal dibuat.",
+      });
+    }
 
-    res.status(201).json({
+    // Simpan profil ke public.users menggunakan Service Role
+    console.log("SERVICE ROLE:", process.env.SUPABASE_SERVICE_ROLE_KEY?.slice(0, 20));
+    const {
+      data: insertedUser,
+      error: insertError,
+    } = await supabaseAdmin
+      .from("users")
+      .insert({
+        id: user.id,
+        full_name,
+      })
+      .select();
+
+    console.log("========== INSERT USER ==========");
+    console.log("Auth User ID :", user.id);
+    console.log("Inserted Data:", insertedUser);
+    console.log("Insert Error :", insertError);
+    console.log("=================================");
+
+    if (insertError) {
+      return res.status(400).json({
+        success: false,
+        message: insertError.message,
+      });
+    }
+
+    return res.status(201).json({
       success: true,
       message: "Register Berhasil",
+      user: insertedUser[0],
     });
   } catch (err) {
-    res.status(500).json({
+    console.error(err);
+
+    return res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+};
+
+// LOGIN
+export const login = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      return res.status(401).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: "Login Berhasil",
+      session: data.session,
+      user: data.user,
+    });
+  } catch (err) {
+    console.error(err);
+
+    return res.status(500).json({
       success: false,
       message: err.message,
     });
